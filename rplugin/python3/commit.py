@@ -6,9 +6,6 @@ import urllib.request as ur
 
 import pynvim
 
-headers = {
-    'Cookie': 'JSESSIONID=E192E58EE1B044566DA644678DBF5ED5; pgv_pvid=2789003169; __qc_wId=69'
-}
 tturl = 'http://www.tzcoder.cn/acmhome/submitcode.do'
 # http://www.tzcoder.cn/acmhome/submitcode.do
 
@@ -19,27 +16,31 @@ class Oj(object):
         self.vim = vim
         self.head = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'}
+        self.headers = {
+            'Cookie': '',
+        }
 
-    @pynvim.command('TestCommand', sync=True)
-    def alter_current_line(self) -> None:
-        self.vim.current.line = "new line"
-
-    @pynvim.command("OjCommit")
+    @ pynvim.command("OjCommit")
     def commit(self) -> None:
+        cookie = self.vim.vars["tzoj_cookie"]
+        self.headers["Cookie"] = cookie
+        if(cookie == ''):
+            self.vim.command("echo 'not set cookie'")
+            return
         b = self.vim.current.buffer
-        problemId = str(b.name).replace('.cpp', '')[-4:]
+        problemId = str(b.name).replace('.cpp', '').replace(".c", '')[-4:]
         strtxt = "\n".join(b[:])
         fordate = {}
         fordate["contestId"] = "0"
-        fordate["localIp"] = "60.180.247.225"
+        fordate["localIp"] = "60.180.247.18"
         fordate["problemId"] = problemId
         fordate["language"] = "C++"
         fordate["code"] = strtxt.encode("utf-8")
         refordate = up.urlencode(fordate).encode('utf-8')
-        req = ur.Request(tturl, data=refordate, headers=headers)
+        req = ur.Request(tturl, data=refordate, headers=self.headers)
         ur.urlopen(req)
 
-    @pynvim.command("OjLevel")
+    @ pynvim.command("OjLevel")
     def level(self) -> None:
         turl = 'http://www.tzcoder.cn/acmhome/problemList.do?method=show&type=1&page='
         b = self.vim.current.buffer
@@ -78,17 +79,18 @@ class Oj(object):
         aclist = re.findall(rule, html1)
         return aclist
 
-    @pynvim.command("OjDifferent")
-    def different(self, bname):
+    @ pynvim.command("OjDifferent")
+    def different(self):
+        user = self.vim.vars["tzoj_compare_user"]
         cshtml = 'http://www.tzcoder.cn/acmhome/userDetail.do?&userName='
-        aurl = cshtml+"sz008"
-        burl = cshtml+bname
+        aurl = cshtml+self.vim.vars["tzoj_user"]
+        burl = cshtml+user
         alist = self.savelist(aurl)
         blist = self.savelist(burl)
         anotlist = [x for x in alist if x not in blist]
         # bnotlist = [y for y in blist if y not in alist]
         self.vim.command("vsplit")
-        self.vim.command("e ~/myCode/clang/acm/tzoj/different/"+bname+".txt")
+        self.vim.command("e ~/myCode/clang/acm/tzoj/different/"+user+".txt")
         del self.vim.current.buffer[:]
         self.vim.current.buffer[0] = anotlist[0]
         for pro in anotlist[1:]:
